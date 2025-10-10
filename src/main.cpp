@@ -20,7 +20,9 @@ Seriële debug en inputverwerking:
 Seriële input verwerken via monitor: https://www.circuitbasics.com/how-to-read-user-input-from-the-arduino-serial-monitor/ (05/10/2025)
 
 AI-assistent: voor opmaak en error searching
-Microsoft*/
+Microsoft Copilot: https://copilot.github.com/ (05/10/2025)
+
+*/
 
 #include <Arduino.h>
 #include "config.h"
