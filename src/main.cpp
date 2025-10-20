@@ -50,11 +50,11 @@ int sirenFreq = 500;
 int sirenDir = 1;
 
 // Debugmodus
-bool debugMode = false;        // start in debugmodus
+bool debugMode = false;        // start in debugmodus (true=aan false=uit)
 float debugTemp = DEFAULT_DEBUG_TEMP;
 float debugHum = DEFAULT_DEBUG_HUM;
 
-// Seriële debug
+// Seriële debugfunctie
 void handleSerialDebug() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
@@ -81,14 +81,14 @@ void stopBuzzer() {
   ledcWriteTone(BUZZER_CHANNEL, 0);
 }
 
-// RGB LED aansturen (common anode: HIGH = uit, LOW = aan)
+// RGB-LED aansturen (common anode: HIGH = uit, LOW = aan)
 void setRgb(bool r, bool g, bool b) {
   digitalWrite(RED_PIN, r ? LOW : HIGH);
   digitalWrite(GREEN_PIN, g ? LOW : HIGH);
   digitalWrite(BLUE_PIN, b ? LOW : HIGH);
 }
 
-// Sensorwaarden printen
+// Sensorwaarden naar seriële monitor printen
 void printData(float temp, float hum) {
   Serial.print("Temperatuur: ");
   Serial.print(isnan(temp) ? "n/a" : String(temp, 1));
@@ -97,7 +97,7 @@ void printData(float temp, float hum) {
   Serial.println(" %");
 }
 
-// Tornado-sirene sweep
+// Tornado-sirene (frequentie sweep)
 void tornadoSiren() {
   unsigned long now = millis();
 
@@ -148,30 +148,8 @@ void blinkBluePhase(unsigned long onTimeMs, unsigned long offTimeMs) {
   setRgb(0, 0, bluePhaseState ? 1 : 0);
 }
 
-void setup() {
-  Serial.begin(115200);
-  dht.begin();
-
-  pinMode(RED_PIN, OUTPUT);
-  pinMode(GREEN_PIN, OUTPUT);
-  pinMode(BLUE_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // knop schakelt naar GND
-
-  digitalWrite(RED_PIN, HIGH);
-  digitalWrite(GREEN_PIN, HIGH);
-  digitalWrite(BLUE_PIN, HIGH);
-  digitalWrite(BUZZER_PIN, LOW);
-
-  ledcSetup(BUZZER_CHANNEL, BUZZER_BASE_FREQ, BUZZER_RESOLUTION);
-  ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
-}
-
-void loop() {
-  handleSerialDebug();
-  unsigned long now = millis();
-
-  // Sensor uitlezen op interval
+// Leest sensor elke READ_INTERVAL en print waardes wanneer nodig
+void sensorTask(unsigned long now) {
   if (now - previousMillis >= READ_INTERVAL) {
     previousMillis = now;
 
@@ -182,12 +160,18 @@ void loop() {
 
     printData(temp, hum);
   }
+}
 
-  // Temperatuur ophalen
+// Lees temperatuur voor beslislogica (houdt gedrag van origineel aan - kan sensor opnieuw uitlezen)
+float readTempForDecision() {
   float t = dht.readTemperature();
   float temp = isnan(t) || debugMode ? debugTemp : t;
+  return temp;
+}
 
-  // Knop direct checken (actief LOW)
+// Verwerk knop- en alarm in-/uitschakel-logica
+void checkButton(float temp) {
+  // Knop direct controleren (actief LOW)
   if (digitalRead(BUTTON_PIN) == LOW && !alarmDisabled && temp >= 50) {
     alarmDisabled = true;
     wasBelowThreshold = false;
@@ -204,8 +188,10 @@ void loop() {
     wasBelowThreshold = false;
     Serial.println("[ALARM] Alarm opnieuw geactiveerd");
   }
+}
 
-  // LED en buzzer gedrag per temperatuurzone
+// Bepaal outputs (LED + buzzer) op basis van temperatuur
+void outputsTask(float temp) {
   if (isnan(temp)) {
     setRgb(COLOR_OFF);
     stopBuzzer();
@@ -228,4 +214,41 @@ void loop() {
     blinkBluePhase(1000, 500);
     stopBuzzer();
   }
+}
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  pinMode(RED_PIN, OUTPUT);
+  pinMode(GREEN_PIN, OUTPUT);
+  pinMode(BLUE_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // knop schakelt naar GND
+
+  digitalWrite(RED_PIN, HIGH);
+  digitalWrite(GREEN_PIN, HIGH);
+  digitalWrite(BLUE_PIN, HIGH);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  ledcSetup(BUZZER_CHANNEL, BUZZER_BASE_FREQ, BUZZER_RESOLUTION);
+  ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
+}
+
+void loop() {
+  // Kort overzichtelijke loop: seriële input, periodieke sensors, knoppen en outputs
+  handleSerialDebug();
+  unsigned long now = millis();
+
+  // Sensor lezen en printen als READ_INTERVAL verstreken is
+  sensorTask(now);
+
+  // Temperatuur voor beslislogica ophalen
+  float temp = readTempForDecision();
+
+  // Knop en alarmlogica
+  checkButton(temp);
+
+  // LED en buzzer gedrag
+  outputsTask(temp);
 }
