@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// --- Hardware Pin Definities ---
+
 // Pinconfiguratie
 #define DHT_PIN 25      // Pin DHT22
 #define RED_PIN 16      // R van RGB LED
@@ -30,5 +32,20 @@
 
 // Interval voor uitlezen
 const unsigned long READ_INTERVAL = 2000; // elke 2 seconden
+
+// --- MQTT Topics (Namen voor de communicatie) ---
+
+// Waarden die we publiceren (ESP32 -> Node-RED)
+const char* TOPIC_TEMP = "wouter/data/temperatuur";
+const char* TOPIC_HUM  = "wouter/data/luchtvochtigheid";
+
+// Commando's die we ontvangen (Node-RED -> ESP32)
+const char* TOPIC_LED  = "wouter/command/ledstatus"; 
+const char* TOPIC_BEEP = "wouter/command/buzzeralarm";
+
+// --- Timing en Drempelwaarden ---
+
+const long SENSOR_INTERVAL_MS = 10000; // Meet interval in milliseconden (10 seconden)
+const long MQTT_RECONNECT_DELAY_MS = 5000; // Wachtijd bij mislukte MQTT connectie
 
 #endif

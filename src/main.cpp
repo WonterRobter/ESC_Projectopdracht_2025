@@ -22,39 +22,157 @@ Seriële input verwerken via monitor: https://www.circuitbasics.com/how-to-read-
 AI-assistent: voor opmaak en error searching
 Microsoft Copilot: https://copilot.github.com/ (05/10/2025)
 
+DEEL2: Bronnen
+PubSubClient Documentatie:
+https://registry.platformio.org/libraries/knolleary/PubSubClient (05/12/2025)
+https://github.com/knolleary/pubsubclient (05/12/2025)
+  https://randomnerdtutorials.com/esp32-mqtt-publish-subscribe-arduino-ide/ (05/12/2025)
+
+
+https://docs.platformio.org/en/latest/librarymanager/
+
+WiFi Connectie (Espressif): https://github.com/espressif/arduino-esp32/tree/master/libraries/WiFi
+
+=== Einde bronnenlijst ===
 */
 
 #include <Arduino.h>
-#include "config.h"
-#include "DHT.h"
+#include <WiFi.h>           
+#include <PubSubClient.h>   
+#include <DHT.h>            
+#include "secrets.h"        // Bevat netwerkgegevens
+#include "config.h"         // Bevat hardware pins
 
+// --- Objecten Initialisatie ---
 DHT dht(DHT_PIN, DHTTYPE);
+WiFiClient espClient;
+PubSubClient client(espClient);
 
-// Tijdregistratie
+// --- Tijdregistratie ---
 unsigned long previousMillis = 0;
 unsigned long lastRedBlinkTime = 0;
 unsigned long lastBluePhaseTime = 0;
 unsigned long lastToneStepTime = 0;
 unsigned long lastDebounceTime = 0;
 
-// Statusvariabelen
+// --- Statusvariabelen ---
 bool redBlinkState = false;
 bool bluePhaseState = true;
 bool alarmDisabled = false;
 bool wasBelowThreshold = false;
 
-bool lastButtonState = HIGH;
-const unsigned long debounceDelay = 50;
-
+bool lastButtonState = HIGH; // PULLUP: default HIGH
 int sirenFreq = 500;
 int sirenDir = 1;
 
-// Debugmodus
+// Zet dit bij je statusvariabelen
+bool forceLedsOff = false; // false = AUTO, true = ALLES UIT
+
+// --- Debugmodus ---
 bool debugMode = false;        // start in debugmodus (true=aan false=uit)
 float debugTemp = DEFAULT_DEBUG_TEMP;
 float debugHum = DEFAULT_DEBUG_HUM;
 
-// Seriële debugfunctie
+// ==========================================
+//               WIFI & MQTT FUNCTIES
+// ==========================================
+
+void setupWifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Verbinden met ");
+  Serial.println(WIFI_SSID);
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi verbonden");
+  Serial.print("IP adres: ");
+  Serial.println(WiFi.localIP());
+}
+
+void reconnect() {
+  // Loop totdat we verbonden zijn
+  while (!client.connected()) {
+    Serial.print("Proberen MQTT verbinding te maken...");
+    // Probeer te verbinden met een unieke Client ID
+    String clientId = "ESP32Client-";
+    clientId += String(random(0xffff), HEX);
+    
+    if (client.connect(clientId.c_str())) {
+      Serial.println("verbonden");
+      // === HIER ABONNEREN WE OP DE TOPICS ===
+      client.subscribe("esp32/leds");
+      client.subscribe("esp32/alarm");
+
+    } else {
+      Serial.print("mislukt, rc=");
+      Serial.print(client.state());
+      Serial.println(" probeer opnieuw in 5 seconden");
+      delay(5000); // Blocking delay bij reconnect (toegestaan in simpele setup)
+    }
+  }
+}
+
+void publishData(float temp, float hum) {
+  // Converteer waarden naar String (of char array) voor MQTT
+  char tempStr[8];
+  char humStr[8];
+  dtostrf(temp, 1, 2, tempStr);
+  dtostrf(hum, 1, 2, humStr);
+
+  client.publish("esp32/temperatuur", tempStr);
+  client.publish("esp32/luchtvochtigheid", humStr);
+  
+  if(debugMode) {
+    Serial.println("[MQTT] Data gepubliceerd");
+  }
+}
+
+void callback(char* topic, byte* message, unsigned int length) {
+  Serial.print("Bericht ontvangen op topic: ");
+  Serial.print(topic);
+  Serial.print(". Bericht: ");
+  String messageTemp;
+  
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)message[i]);
+    messageTemp += (char)message[i];
+  }
+  Serial.println();
+
+  // Actie 1: LED Besturing (Topic: esp32/leds)
+  if (String(topic) == "esp32/leds") {
+    if(messageTemp == "OFF"){
+      Serial.println("[REMOTE] LEDs geforceerd UIT");
+      forceLedsOff = true;
+    }
+    else if(messageTemp == "AUTO"){
+      Serial.println("[REMOTE] LEDs terug op AUTO");
+      forceLedsOff = false;
+    }
+  }
+
+  // Actie 2: Alarm Besturing (Topic: esp32/alarm)
+  if (String(topic) == "esp32/alarm") {
+    if(messageTemp == "OFF"){
+      Serial.println("[REMOTE] Alarm uitgeschakeld via Dashboard");
+      alarmDisabled = true; // We hergebruiken je bestaande variabele!
+      wasBelowThreshold = false; // Reset de logica zodat hij niet meteen weer aanspringt
+    }
+  }
+}
+
+// ==========================================
+//            BESTAANDE LOGICA (DEEL1)
+// ==========================================
+
+
 void handleSerialDebug() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
@@ -100,11 +218,9 @@ void printData(float temp, float hum) {
 // Tornado-sirene (frequentie sweep)
 void tornadoSiren() {
   unsigned long now = millis();
-
   if (now - lastToneStepTime >= 8) {
     ledcWriteTone(BUZZER_CHANNEL, sirenFreq);
     sirenFreq += sirenDir * 5;
-
     if (sirenFreq >= 2000) {
       sirenFreq = 2000;
       sirenDir = -1;
@@ -113,7 +229,6 @@ void tornadoSiren() {
       sirenFreq = 500;
       sirenDir = 1;
     }
-
     lastToneStepTime = now;
   }
 }
@@ -121,10 +236,8 @@ void tornadoSiren() {
 // Rood knipperen bij alarm
 void blinkRed(unsigned long interval) {
   unsigned long currentMillis = millis();
-
   if (currentMillis - lastRedBlinkTime >= interval) {
     lastRedBlinkTime = currentMillis;
-
     if (redBlinkState == false) {
       redBlinkState = true;
       setRgb(1, 0, 0); // rood aan
@@ -158,7 +271,13 @@ void sensorTask(unsigned long now) {
     float temp = isnan(t) || debugMode ? debugTemp : t;
     float hum = isnan(h) || debugMode ? debugHum : h;
 
+    // 1. Printen naar Serieel (lokaal)
     printData(temp, hum);
+
+    // 2. Sturen naar MQTT (cloud/dashboard)
+    if (client.connected()) {
+        publishData(temp, hum);
+    }
   }
 }
 
@@ -192,6 +311,18 @@ void checkButton(float temp) {
 
 // Bepaal outputs (LED + buzzer) op basis van temperatuur
 void outputsTask(float temp) {
+  if (!isnan(temp) && temp >= 50 && !alarmDisabled) {
+    tornadoSiren();
+  } else {
+    // Als het veilig is (of alarm disabled), buzzer stil.
+    stopBuzzer();
+  }
+  if (forceLedsOff) {
+    setRgb(COLOR_OFF);
+    return;
+  }
+
+
   if (isnan(temp)) {
     setRgb(COLOR_OFF);
     stopBuzzer();
@@ -216,6 +347,10 @@ void outputsTask(float temp) {
   }
 }
 
+// ==========================================
+//               SETUP & LOOP
+// ==========================================
+
 void setup() {
   Serial.begin(115200);
   dht.begin();
@@ -233,22 +368,24 @@ void setup() {
 
   ledcSetup(BUZZER_CHANNEL, BUZZER_BASE_FREQ, BUZZER_RESOLUTION);
   ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
+  // Netwerk setup
+  setupWifi();
+  client.setServer(MQTT_SERVER, 1883); // Poort 1883 is standaard voor onbeveiligde MQTT
+  client.setCallback(callback);
 }
 
 void loop() {
-  // Kort overzichtelijke loop: seriële input, periodieke sensors, knoppen en outputs
+  // Controleer MQTT verbinding
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop(); // Houdt de MQTT client levend
+
   handleSerialDebug();
   unsigned long now = millis();
 
-  // Sensor lezen en printen als READ_INTERVAL verstreken is
-  sensorTask(now);
-
-  // Temperatuur voor beslislogica ophalen
-  float temp = readTempForDecision();
-
-  // Knop en alarmlogica
-  checkButton(temp);
-
-  // LED en buzzer gedrag
-  outputsTask(temp);
+  sensorTask(now);                    // Sensor lezen en printen als READ_INTERVAL verstreken is
+  float temp = readTempForDecision(); // Temperatuur voor beslislogica ophalen
+  checkButton(temp);                  // Knop en alarmlogica
+  outputsTask(temp);                  // LED en buzzer gedrag
 }
