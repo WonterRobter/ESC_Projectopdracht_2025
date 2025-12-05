@@ -275,7 +275,7 @@ void sensorTask(unsigned long now) {
     float t = dht.readTemperature();
     float h = dht.readHumidity();
 
-    // Als ik aan het testen ben (debugMode), negeer ik de echte sensor
+    // Als ik aan het testen ben (debugMode), negeer het de echte sensor
     float temp = debugMode ? debugTemp : t;
     float hum = debugMode ? debugHum : h;
 
