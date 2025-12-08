@@ -1,0 +1,302 @@
+[
+    {
+        "id": "ca38caa2d3cb32b6",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e676d35e50dd025d",
+        "type": "mqtt in",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "topic": "esp32/temperatuur",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "0755da068279def7",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 710,
+        "y": 500,
+        "wires": [
+            [
+                "e1812abd158a9184"
+            ]
+        ]
+    },
+    {
+        "id": "e1812abd158a9184",
+        "type": "ui_gauge",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "group": "4f178ac11bbc5213",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Temperatuur",
+        "label": "°C",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "50",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 970,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "79cec226273ec7e8",
+        "type": "mqtt in",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "topic": "esp32/luchtvochtigheid",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "0755da068279def7",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 720,
+        "y": 580,
+        "wires": [
+            [
+                "a6433976c4455126"
+            ]
+        ]
+    },
+    {
+        "id": "a6433976c4455126",
+        "type": "ui_chart",
+        "z": "ca38caa2d3cb32b6",
+        "name": "luchtvochtigheid",
+        "group": "4f178ac11bbc5213",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "label": "luchtvochtigheid",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "100",
+        "removeOlder": "15",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "60",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": true,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 980,
+        "y": 580,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ead264d13701b2a4",
+        "type": "ui_button",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "group": "4f178ac11bbc5213",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "LED OFF",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "OFF",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 740,
+        "y": 380,
+        "wires": [
+            [
+                "20666277299a0ef6"
+            ]
+        ]
+    },
+    {
+        "id": "20666277299a0ef6",
+        "type": "mqtt out",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "topic": "esp32/leds",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "0755da068279def7",
+        "x": 990,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "3edcea8023810a06",
+        "type": "ui_button",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "group": "4f178ac11bbc5213",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "LED AUTO",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "AUTO",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 750,
+        "y": 300,
+        "wires": [
+            [
+                "20666277299a0ef6"
+            ]
+        ]
+    },
+    {
+        "id": "7b81609448910a02",
+        "type": "ui_button",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "group": "4f178ac11bbc5213",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "ALARM UIT",
+        "tooltip": "",
+        "color": "red",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "OFF",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 730,
+        "y": 720,
+        "wires": [
+            [
+                "02fea9a7755fb142"
+            ]
+        ]
+    },
+    {
+        "id": "02fea9a7755fb142",
+        "type": "mqtt out",
+        "z": "ca38caa2d3cb32b6",
+        "name": "",
+        "topic": "esp32/alarm",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "0755da068279def7",
+        "x": 970,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "0755da068279def7",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "mosquitto",
+        "port": 1883,
+        "clientid": "nodered-client",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "4f178ac11bbc5213",
+        "type": "ui_group",
+        "name": "ESC_Projectopdracht_2025",
+        "tab": "2c961043bbc92b33",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "2c961043bbc92b33",
+        "type": "ui_tab",
+        "name": "ESC_Projectopdracht_2025",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "c568b7a748149fc4",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
+    }
+]
